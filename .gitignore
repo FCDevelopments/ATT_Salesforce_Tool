@@ -1,0 +1,17 @@
+# Secrets & local config
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+input/
+output/
+state/
+last_run_log.txt
