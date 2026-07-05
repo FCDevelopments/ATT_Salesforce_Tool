@@ -29,8 +29,13 @@ echo        Downloading Python 3.12 from python.org...
 echo        (This may take a minute depending on your internet speed.)
 echo.
 
+REM Pin BOTH the installer version and its official SHA-256. When you bump the
+REM version, update PY_SHA256 to the matching hash from python.org's release page
+REM (https://www.python.org/downloads/release/python-XXXX/ -> "Files" table).
+set "PY_VER=3.12.10"
+set "PY_SHA256=67b5b7b0b4 b8f5b6b4a... REPLACE_WITH_OFFICIAL_SHA256"
 set "INSTALLER=%TEMP%\python_installer.exe"
-powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe' -OutFile '%INSTALLER%' -UseBasicParsing"
+powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/%PY_VER%/python-%PY_VER%-amd64.exe' -OutFile '%INSTALLER%' -UseBasicParsing"
 
 if not exist "%INSTALLER%" (
   echo.
@@ -42,6 +47,27 @@ if not exist "%INSTALLER%" (
   echo.
   pause
   exit /b 1
+)
+
+REM --- Verify the download's integrity before executing it -------------------
+REM Skips verification only if PY_SHA256 is still the placeholder, so the tool
+REM keeps working out of the box; fill in the real hash to enforce it.
+echo "%PY_SHA256%" | findstr /C:"REPLACE_WITH_OFFICIAL_SHA256" >nul
+if errorlevel 1 (
+  for /f "skip=1 delims=" %%H in ('powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 '%INSTALLER%').Hash"') do set "GOT_SHA=%%H"
+  if /i not "%GOT_SHA%"=="%PY_SHA256%" (
+    echo.
+    echo [ERROR] Python installer checksum mismatch -- refusing to run it.
+    echo         Expected: %PY_SHA256%
+    echo         Got:      %GOT_SHA%
+    echo         Delete "%INSTALLER%" and try again, or install Python manually.
+    del "%INSTALLER%" >nul 2>nul
+    pause
+    exit /b 1
+  )
+  echo [OK] Installer checksum verified.
+) else (
+  echo [WARN] PY_SHA256 not set -- skipping integrity check. Set it to enforce.
 )
 
 echo [INFO] Download complete. Installing Python silently...
